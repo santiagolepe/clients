@@ -31,9 +31,16 @@ qx.Class.define("app.page.Home", {
         showButton: true,
         buttonText: "Nuevo"
       });
+      var self = this;
+      var onError = function(tx, e) {
+        alert("Error: " + e.message);
+      } 
 
-      var data = qx.core.Init.getApplication().clients;
-
+      var onSuccess = function(tx, r){
+        console.log("success");
+        qx.core.Init.getApplication().clients.splice(self.index, 1);
+        self._refresh();
+      }
       // Create the list with a delegate that
       var list = this.list = new qx.ui.mobile.list.List({
         configureItem: function(item, data, row)
@@ -47,19 +54,26 @@ qx.Class.define("app.page.Home", {
       });
 
       // Set the model of the list
-      list.setModel(new qx.data.Array(data));
+      list.setModel(new qx.data.Array(qx.core.Init.getApplication().clients));
 
       // Add an changeSelection event
       list.addListener("changeSelection", function(evt) {
         // alert("Index: " + evt.getData())
         var form = qx.core.Init.getApplication().form;
         form.show();
-        form._open(data[evt.getData()].id);
+        form._open(qx.core.Init.getApplication().clients[evt.getData()].id);
       }, this);
 
       list.addListener("removeItem", function(evt) {
-       qx.core.Init.getApplication().clients.splice(evt.getData(), 1);
-       this._refresh();
+        self.index = evt.getData();
+        var db = qx.core.Init.getApplication().db;
+        console.log(qx.core.Init.getApplication().clients[evt.getData()]);
+        var id = qx.core.Init.getApplication().clients[evt.getData()].id;
+       db.transaction(function(tx) {
+        tx.executeSql("DELETE FROM clients WHERE ID=?", [id],
+          onSuccess,
+          onError);
+      });
       }, this);
 
 
@@ -78,8 +92,7 @@ qx.Class.define("app.page.Home", {
     },
 
     _refresh: function(){
-      var data = qx.core.Init.getApplication().clients;
-      this.list.setModel(new qx.data.Array(data));
+      this.list.setModel(new qx.data.Array(qx.core.Init.getApplication().clients));
     }
 
   }
